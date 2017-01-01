@@ -110,7 +110,7 @@
     (list '(mlist) "l" "lsp" "lisp"))
 
 (defmvar $file_type_maxima
-    (list '(mlist) "mac" "mc" "demo" "dem" "dm1" "dm2" "dm3" "dmt"))
+    (list '(mlist) "mac" "mc" "demo" "dem" "dm1" "dm2" "dm3" "dmt" "wxm"))
 
 (defun $file_type (fil)
   (let ((typ ($pathname_type fil)))
@@ -275,7 +275,7 @@
 
   (let ((result) (next-result) (next) (error-log) (all-differences nil) ($ratprint nil) (strm)
 	(*mread-prompt* "") (*read-base* 10.)
-	(expr) (num-problems 0) (tmp-output) (save-output) (i 0)
+	(expr) (num-problems 0) (problem-lineinfo) (problem-lineno) (tmp-output) (save-output) (i 0)
 	(start-run-time 0) (end-run-time 0)
 	(start-real-time 0) (end-real-time 0)
 	(test-start-run-time 0) (test-end-run-time 0)
@@ -300,6 +300,9 @@
 	  (setq start-run-time (get-internal-run-time))
 	  (while (not (eq 'eof (setq expr (mread strm 'eof))))
 	    (incf num-problems)
+        (setq problem-lineinfo (second (first expr)))
+        (setq problem-lineno (if (and (consp problem-lineinfo) (integerp (first problem-lineinfo)))
+                               (1+ (first problem-lineinfo))))
 	    (incf i)
 	    (setf tmp-output (make-string-output-stream))
 	    (setf save-output *standard-output*)
@@ -325,7 +328,8 @@
 		   (pass (or correct expected-error)))
 	      (when (or show-all (not pass) (and correct expected-error)
 			(and expected-error show-expected))
-		(format out (intl:gettext "~%********************** Problem ~A ***************") i)
+		(format out (intl:gettext "~%********************** Problem ~A~A***************")
+                    i (if problem-lineno (format nil " (line ~S) " problem-lineno) " "))
 		(format out (intl:gettext "~%Input:~%"))
 		(displa (third expr))
 		(format out (intl:gettext "~%~%Result:~%"))
@@ -350,7 +354,8 @@
 		       (push i all-differences)
 		       (displa next-result)
 		       (cond ((and *collect-errors* error-log)
-			      (format error-log (intl:gettext "/* Problem ~A */~%") i)
+			      (format error-log (intl:gettext "/* Problem ~A~A*/~%")
+                                    i (if problem-lineno (format nil " (line ~S) " problem-lineno) " "))
 			      (mgrind (third expr) error-log)
 			      (list-variable-bindings (third expr) error-log)
 			      (format error-log ";~%")
@@ -536,7 +541,8 @@
 (defun run-testsuite (&key display_known_bugs display_all tests time share_tests debug)
   (declare (special $file_search_tests))
   (let ((test-file)
-	(expected-failures))
+	(expected-failures)
+	(test-file-path))
     ;; Allow only T and NIL for display_known_bugs and display_all
     (unless (member display_known_bugs '(t nil))
       (merror (intl:gettext "run_testsuite: display_known_bugs must be true or false; found: ~M") display_known_bugs))
@@ -565,9 +571,14 @@
 	   ;; Do nothing
 	   (values $testsuite_files $file_search_tests))
 	  ((t)
-	   ;; Append the share files
+	   ;; Append the share files and concatenate the search paths
+	   ;; for tests and maxima so we can find both sets of tests.
 	   (values ($append $testsuite_files $share_testsuite_files)
-		   $file_search_maxima))
+		   ;; Is there a better way to do this?
+		   (concatenate 'list
+				'((mlist))
+				(rest $file_search_tests)
+				(rest $file_search_maxima))))
 	  ($only
 	   ;; Only the share test files
 	   (values $share_testsuite_files $file_search_maxima)))
@@ -575,7 +586,8 @@
 	    ($file_search_tests desired-search-path))
 	(when debug
 	  (let (($stringdisp t))
-	    (mformat t "$testsuite_files = ~M~%" $testsuite_files)))
+	    (mformat t "$testsuite_files = ~M~%" $testsuite_files)
+	    (mformat t "$file_search_tests = ~M~%" $file_search_tests)))
 	(let ((error-break-file)
 	      (testresult)
 	      (tests-to-run (intersect-tests (cond ((consp tests) tests)
@@ -597,16 +609,19 @@
 			      (progn
 				(setf test-file (second testentry))
 				(setf expected-failures (cddr testentry))))
+		          (setf test-file-path ($file_search test-file $file_search_tests))
 			  (format t
 				  (intl:gettext "Running tests in ~a: ")
 				  (if (symbolp test-file)
 				      (subseq (print-invert-case test-file) 1)
 				      test-file))
+			  (when debug
+			    (format t (intl:gettext "(~A) ") test-file-path))
 			  (or
 			    (errset
 			      (progn
 				(multiple-value-setq (testresult test-count)
-				  (test-batch ($file_search test-file $file_search_tests)
+				  (test-batch test-file-path
 					      expected-failures :show-expected display_known_bugs
 					      :show-all display_all :showtime time))
 				(setf testresult (rest testresult))
@@ -620,8 +635,14 @@
 				    (append errs
 					    (list (list error-break-file "error break"))))
 			      (format t
-				      (intl:gettext "~%Caused an error break: ~a~%")
-				      test-file)))
+				      (intl:gettext "~%Caused an error break: ~a")
+				      test-file)
+			      ;; If the test failed because we
+			      ;; couldn't find the file, make a noe of
+			      ;; that.
+			      (unless test-file-path
+				(format t (intl:gettext ": test file not found.")))
+			      (format t "~%")))
 		       finally (cond
 				 ((null errs)
 				  (format t

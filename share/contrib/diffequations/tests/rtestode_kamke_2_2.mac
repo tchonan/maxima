@@ -15,7 +15,7 @@ true;
 [method, ode_check(eqn,ans[1])];
 [odelin,0];
 
-/* Kamke 2. 102  */ 
+/* Kamke 2. 102  */
 (pn_(102),ans:contrib_ode(eqn:x*'diff(y,x,2)+2*'diff(y,x,1)+a*x^2*y,y,x),0);
 0$
 /*
@@ -468,7 +468,7 @@ false;
 (pn_(156),ans:contrib_ode(eqn:x^2*'diff(y,x,2)+y/log(x)-x*%e^x*(x*log(x)+2),y,x));
 false;
 
-/* Kamke 2. 157  */ 
+/* Kamke 2. 157  */
 (pn_(157),ans:contrib_ode(eqn:x^2*'diff(y,x,2)+a*'diff(y,x,1)-x*y,y,x));
 false;
 
@@ -645,7 +645,9 @@ freeofy;
 
 /* Kamke 2. 178  */ 
 (pn_(178),ans:contrib_ode(eqn:x^2*'diff(y,x,2)-2*x*'diff(y,x,1)+(x^2+2)*y-x^3/cos(x),y,x));
-false;
+[y=x*cos(x)*log(cos(x))+x^2*sin(x)+%k2*x*sin(x)+%k1*x*cos(x)];
+[method,ode_check(eqn,ans[1])];
+[kovacic,0];
 
 /* Kamke 2. 179  */ 
 (pn_(179),ans:contrib_ode(eqn:x^2*'diff(y,x,2)-2*x*'diff(y,x,1)+(a^2*x^2+2)*y,y,x));

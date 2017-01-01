@@ -1,12 +1,11 @@
-SUBDIRS = wxwidgets
 EXTRA_DIST =\
  CMakeLists.txt\
  FileAssociation.nsh\
- NSIS.template.in\
- README.txt\
+ README.txt TODO.txt\
  maxima-icon.bmp\
- wine-clisp.sh.tmpl\
- wine-lisp.sh.tmpl\
- vtk-6.3.patch\
- Toolchain-mingw32.cmake\
- xmaxima.bat
+ wine-clisp.sh.tmpl wine-lisp.sh.tmpl wine-sbcl.sh.tmpl\
+ wxmaxima-16.04.2-patch\
+ setup-imaxima-imath.el-patch.tmpl\
+ sbcl.sh.tmpl licenses.html\
+ lispselector.bat lispselector.tcl\
+ xmaxima.bat downloads/.keep build/.keep

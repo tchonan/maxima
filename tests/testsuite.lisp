@@ -6,14 +6,19 @@
 ;;; ((mlist simp) "testfile.mac" 7 9 13).
 
 (setf $testsuite_files
-      '((mlist simp)
+      `((mlist simp)
         "rtest_rules"
         "rtestnset" 
-        ((mlist) "rtest1" 180)
+        ((mlist) "rtest1" 180 182 183)
         "rtest1a"
         ((mlist) "rtest2" 86 95)
 	"rtest4"
-        "rtest5"
+        ;; Mark tests that require the documentation as known failures
+        ;; if this was a lisp-only build
+        ((mlist) "rtest5"
+                 ,@(and (boundp '*autoconf-lisp-only-build*)
+                        (symbol-value '*autoconf-lisp-only-build*)
+                        (list 78 80)))
         "rtest6" "rtest6a" "rtest6b" "rtest7"
         "rtest9" 
         "rtest9a"
@@ -21,7 +26,9 @@
         "rtest11" "rtest13" "rtest13s"
         "rtest14"
         "rtest15"
-        "rtest16"
+	;; ccl versions 1.11 and earlier fail test 50.  Mark it as a
+	;; known failure.  Presumably 1.12 will have this fixed.
+        ((mlist simp) "rtest16" #+ccl 50)
         "rtestode" "rtestode_zp"
         "rtest3" "rtest8"
         ((mlist simp) "rtest12" 76 78)
@@ -54,7 +61,7 @@
         "rtest_expintegral"
         "rtest_signum"
         "rtest_lambert_w"
-        "rtest_elliptic"
+        ((mlist) "rtest_elliptic" 129 143)
         "rtest_integrate"
         "rtest_integrate_special"
         ((mlist simp) "rtest_sqrt" 89)
@@ -66,5 +73,6 @@
         "rtest_powerseries"
         ((mlist) "rtest_laplace" 29 49 50 51 54 59 60 61 62 78 80)
         "rtest_plotoptions"
+	"rtest_algsys"
 	))
 

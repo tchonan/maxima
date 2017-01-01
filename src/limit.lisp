@@ -245,8 +245,7 @@
 (defun limit-context (var val direction) ;Only works on entry!
   (cond (limit-top
 	 (assume '((mgreaterp) lim-epsilon 0))
-	 (assume '((mlessp) lim-epsilon 1e-8))
-	 (assume '((mgreaterp) prin-inf 1e+8))
+	 (assume '((mgreaterp) prin-inf 100000000))
 	 (setq limit-assumptions (make-limit-assumptions var val direction))
 	 (setq limit-top ()))
 	(t ()))
@@ -259,15 +258,13 @@
 	  ((and (not (infinityp val)) (null direction))
 	   ())
 	  ((eq val '$inf)
-	   `(,(assume `((mgreaterp) ,var 1e+8)) ,@new-assumptions))
+	   `(,(assume `((mgreaterp) ,var 100000000)) ,@new-assumptions))
 	  ((eq val '$minf)
-	   `(,(assume `((mgreaterp) -1e+8 ,var)) ,@new-assumptions))
+	   `(,(assume `((mgreaterp) -100000000 ,var)) ,@new-assumptions))
 	  ((eq direction '$plus)
-	   `(,(assume `((mgreaterp) 1e-8 ,var))
-	     ,(assume `((mgreaterp) ,var 0)) ,@new-assumptions)) ;All limits around 0
+	   `(,(assume `((mgreaterp) ,var 0)) ,@new-assumptions)) ;All limits around 0
 	  ((eq direction '$minus)
-	   `(,(assume `((mgreaterp) ,var -1e-8))
-	     ,(assume `((mgreaterp) 0 ,var)) ,@new-assumptions))
+	   `(,(assume `((mgreaterp) 0 ,var)) ,@new-assumptions))
 	  (t
 	   ()))))
 
@@ -278,8 +275,7 @@
       ((null assumption-list) t)
     (forget (car assumption-list)))
   (forget '((mgreaterp) lim-epsilon 0))
-  (forget '((mlessp) lim-epsilon 1.0e-8))
-  (forget '((mgreaterp) prin-inf 1.0e+8))
+  (forget '((mgreaterp) prin-inf 100000000))
   (cond ((and (not (null integer-info))
 	      (not limitp))
 	 (do ((list integer-info (cdr list)))
@@ -312,9 +308,6 @@
              '$infinity)
             (t
              '$und)))))
-
-;; Warning:  (CATCH NIL ...) will catch all throws.
-;; NIL should not be used as a tag name.
 
 (defun limunknown (f)
   (catch 'limunknown (limunknown1 (specrepcheck f))))
@@ -1101,7 +1094,7 @@ ignoring dummy variables and array indices."
     (cond ((involve e '(mfactorial)) nil)
 
 	  ;; functions that are defined at their discontinuities
-	  ((amongl '($atan2 $floor $round $ceiling %signum %integrate
+	  ((amongl '($atan2 $floor %round $ceiling %signum %integrate
 			    %gamma_incomplete)
 		   e) nil)
 
@@ -1922,7 +1915,7 @@ ignoring dummy variables and array indices."
           (t
            (setf denom (m* denom term)
                  constant-infty (or constant-infty (not (among var term))))
-           (unless (eq inf-type 'infinity)
+           (unless (eq inf-type '$infinity)
              (cond
                ((eq y '$infinity) (setq inf-type '$infinity))
                ((null inf-type) (setf inf-type y))
@@ -2473,7 +2466,6 @@ ignoring dummy variables and array indices."
 			      (list 'var var 1.))
 			     (t (list 'num term))))
 	((not (among var term))  (list 'num term))
-	((radicalp term var)  (list 'var term (rddeg term nil)))
 	((mplusp term)
 	 (let ((temp (ismax (mapcar #'istrength (cdr term)))))
 	   (cond ((not (null temp))  temp)

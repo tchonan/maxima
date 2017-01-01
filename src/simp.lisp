@@ -507,7 +507,7 @@
 (defmfun freel (l var)
   (do ((l l (cdr l))) ((null l) t)
     (cond
-     ((atom l) (return (equal l var)))	;; second element of a pair
+     ((atom l) (return (free l var)))	;; second element of a pair
      ((not (free (car l) var)) (return nil)))))
 
 
@@ -539,12 +539,6 @@
 	((eq (caar x) 'rat) (*red1 x))
 	((and (not dosimp) (member 'simp (cdar x) :test #'eq)) x)
 	((eq (caar x) 'mrat) x)
-	((and (member (caar x) '(mplus mtimes mexpt) :test #'eq)
-	      (member (get (caar x) 'operators) '(simplus simpexpt simptimes) :test #'eq)
-	      (not (member 'array (cdar x) :test #'eq)))
-	 (cond ((eq (caar x) 'mplus) (simplus x 1 y))
-	       ((eq (caar x) 'mtimes) (simptimes x 1 y))
-	       (t (simpexpt x 1 y))))
 	((not (atom (caar x)))
 	 (cond ((or (eq (caaar x) 'lambda)
 		    (and (not (atom (caaar x))) (eq (caaaar x) 'lambda)))
@@ -1451,7 +1445,7 @@
         ((and (member $logexpand '($all $super))
               (consp y)
               (member (caar y) '(%product $product)))
-         (let ((new-op (if (eq (getcharn (caar y) 1) #\%) '%sum '$sum)))
+         (let ((new-op (if (eql (getcharn (caar y) 1) #\%) '%sum '$sum)))
            (simplifya `((,new-op) ((%log) ,(cadr y)) ,@(cddr y)) t)))
         ((and $lognegint
               (maxima-integerp y)
@@ -2872,7 +2866,7 @@
 	      ((= i 1) '$%i)
 	      ((= i 2) -1)
 	      (t (list '(mtimes simp) -1 '$%i))))
-      (power -1 (mul2 pot '((rat simp) 1 2)))))
+    (power -1 (mul2 pot '((rat simp) 1 2)))))
 
 (defun mnlogp (pot)
   (cond ((eq (caar pot) '%log) (simplifya (cadr pot) nil))

@@ -10,7 +10,7 @@ dnl whitespace so when updating the version number only make changes
 dnl within the second pair of square brackets.
 AC_INIT([maxima], [5.38post])
 AC_CONFIG_SRCDIR([src/macsys.lisp])
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wno-portability tar-ustar])
 
 AM_PATH_LISPDIR
 
@@ -481,6 +481,48 @@ if test x"${openmcl}" = xtrue ; then
 	fi
 fi
 
+dnl n.b. ccl64_default_name is hardcoded in "with" message
+dnl We assume we're running on an x86 processor.  The user has to
+dnl select a different executable name to match his system, if neceessary.
+
+ccl64_default_name=dx86cl64
+AC_ARG_ENABLE(ccl64,
+	[  --enable-ccl64               Use CCL (Clozure Common Lisp), 64-bit],
+     	[case "${enableval}" in
+       		yes) ccl64=true 
+		     lisps_enabled="${lisps_enabled} ccl64"
+		     explicit_lisp=true;;
+       		no)  ccl64=false ;;
+		*) AC_MSG_ERROR(bad value ${enableval} for --enable-ccl64) ;;
+     	esac],
+	[ccl64=false])
+AC_ARG_WITH(ccl64,
+	[  --with-ccl64=<prog>          Use ccl64 executable <prog> (default dx86cl64)],
+	[ccl64=true
+	lisps_enabled="${lisps_enabled} ccl64"
+	explicit_lisp=true
+	if test "$withval" = "yes"; then
+		CCL64_NAME="${ccl64_default_name}"
+	else
+		CCL64_NAME="$withval"
+	fi],
+	[CCL64_NAME=${ccl64_default_name}])
+AC_ARG_ENABLE(ccl64-exec,
+	[  --enable-ccl64-exec          Create a maxima executable image using CCL.
+                                No check is made if the version of 
+                                CCL supports executable images],
+	[case "${enableval}" in
+	    yes) ccl64_exec=true
+                 ccl64=true 
+		 lisps_enabled="${lisps_enabled} ccl64"
+                 explicit_lisp=true;;
+	    no) ccl64_exec=false ;;
+	    *) AC_MSG_ERROR(bad value ${enableval} for --enable-ccl64-exec) ;;
+         esac
+	 CCL64_EXEC=${ccl64_exec}],
+	[ccl64_exec=false
+	 CCL64_EXEC=false])
+
 dnl n.b. ecl_default_name is hardcoded in "with" message
 ecl_default_name=ecl
 AC_ARG_ENABLE(ecl,
@@ -688,6 +730,17 @@ if test x$chm = xtrue; then
   fi
 fi
 
+dnl Make the build quiet
+AC_ARG_ENABLE(quiet_build,
+  [  --enable-quiet-build         Make the build quieter],
+  [case "${enableval}" in
+     yes) quiet_build=true ;;
+     no)  quiet_build=false ;;
+     *) AC_MSG_ERROR(bad value ${enableval} for --enable-quiet-build) ;;
+   esac],
+  [quiet_build=false])
+AM_CONDITIONAL(QUIET_BUILD, test x${quiet_build} = xtrue)
+
 dnl Optionally build xmaxima.exe under windows
 dnl default to false as additional software
 AC_ARG_ENABLE(xmaxima_exe,
@@ -773,6 +826,7 @@ if test x"${explicit_lisp}" = xfalse ; then
 	AC_CHECK_PROG(sbcl_found,$SBCL_NAME,true,false)
 	AC_CHECK_PROG(acl_found,$ACL_NAME,true,false)
 	AC_CHECK_PROG(openmcl_found,$OPENMCL_NAME,true,false)
+	AC_CHECK_PROG(ccl64_found,$CCL64_NAME,true,false)
 	AC_CHECK_PROG(ecl_found,$ECL_NAME,true,false)
 
   	if test x"${clisp_found}" = xtrue ; then
@@ -796,6 +850,9 @@ if test x"${explicit_lisp}" = xfalse ; then
 	elif test x"${ecl_found}" = xtrue ; then
 		ecl=true
 		lisps_enabled="${lisps_enabled} ecl"
+        elif test x"${ccl64_found}" = xtrue; then
+                ccl64=true
+                lisps_enabled="${lisps_enabled} ccl64"
 	else
 		AC_MSG_ERROR(No lisp implementation specified and none of the default executables [${clisp_default_name}(clisp),${gcl_default_name}(GCL),${cmucl_default_name}(CMUCL),${scl_default_name}(SCL),${sbcl_default_name}(SBCL),${acl_default_name}(ACL),${openmcl_default_name}(OpenMCL),${ecl_default_name}(ECL)] were found in PATH)
 	fi
@@ -813,6 +870,8 @@ AM_CONDITIONAL(ACL, test x$acl = xtrue)
 AM_CONDITIONAL(OPENMCL, test x$openmcl = xtrue)
 AM_CONDITIONAL(OPENMCL_EXEC, test x${openmcl_exec} = xtrue)
 AM_CONDITIONAL(ECL, test x$ecl = xtrue)
+AM_CONDITIONAL(CCL64, test x$ccl64 = xtrue)
+AM_CONDITIONAL(CCL64_EXEC, test x${ccl64_exec} = xtrue)
 
 if test x"${clisp}" = xtrue; then
     if test x"${CLISP_RUNTIME_PATH}" = x"" ; then
@@ -976,6 +1035,13 @@ AC_ARG_WITH(default-lisp,
 			else
 				AC_MSG_ERROR(ecl not enabled)
 			fi
+			;;
+		ccl64)		
+			if test x"${ccl64}" = xtrue ; then
+				DEFAULTLISP=ccl64
+			else
+				AC_MSG_ERROR(ccl64 not enabled)
+			fi
 			;;		
 		*) 
 			AC_MSG_ERROR(Unknown argument ${DEFAULTLISP} to --with-default-lisp) 
@@ -997,6 +1063,8 @@ AC_ARG_WITH(default-lisp,
 		DEFAULTLISP=openmcl
 	elif test x"${ecl}" = xtrue ; then
 		DEFAULTLISP=ecl
+	elif test x"${ccl64}" = xtrue ; then
+		DEFAULTLISP=ccl64
 	else
 		AC_MSG_ERROR(Internal error. No lisp enabled. Please contact maintainer.)
 	fi])
@@ -1016,6 +1084,7 @@ AC_SUBST(GCL_NAME)
 AC_SUBST(ACL_NAME)
 AC_SUBST(OPENMCL_NAME)
 AC_SUBST(ECL_NAME)
+AC_SUBST(CCL64_NAME)
 AC_SUBST(DEFAULTLISP)
 AC_SUBST(HHC)
 AC_SUBST(lisps_enabled)
@@ -1079,12 +1148,13 @@ expanded_infodir="$(eval "prefix=\"${tmp_prefix}\";datarootdir=\"${datarootdir}\
 
 
 dnl Find all the directories in share, but remove the share directory
-dnl itself and all CVS directories (if any) and fortran directories.
+dnl itself and all CVS directories (if any) and fortran directories
+dnl and *.t2p directories (created when generating pdf documentation).
 dnl Remove the leading "share" part of the path, and add double-quotes
 dnl around it.
 
 #default_sharedirs=`find share -type d | sort | egrep -v 'share$|CVS|/fortran' | sed 's;share/\(.*\);        "\1" \\\\;' | sed '$s;\\\\;;'`
-default_sharedirs=`find share -type d | sort | egrep -v 'share$|CVS|/fortran' | sed 's;share/\(.*\);"\1";' | tr '\n' ' '`
+default_sharedirs=`find share -type d | sort | egrep -v 'share$|CVS|/fortran|\.t2p' | sed 's;share/\(.*\);"\1";' | tr '\n' ' '`
 
 AC_SUBST(expanded_top_srcdir)
 AC_SUBST(expanded_exec_prefix)
@@ -1119,7 +1189,7 @@ AC_OUTPUT(Makefile maxima.spec maxima.iss \
 admin/Makefile src/Makefile src/maxima src/rmaxima src/autoconf-variables.lisp \
 src/share-subdirs.lisp \
 lisp-utils/Makefile tests/Makefile doc/Makefile \
-crosscompile-windows/Makefile crosscompile-windows/wxwidgets/Makefile \
+crosscompile-windows/Makefile \
 doc/emaxima/Makefile doc/info/Makefile doc/info/include-maxima.texi \
 doc/info/texi2html.init \
 doc/info/figures/Makefile \
@@ -1181,6 +1251,12 @@ if test x"${openmcl}" = xtrue ; then
 fi
 if test x"${openmcl_exec}" = xtrue ; then
    echo "OpenMCL executable image enabled for maxima."
+fi
+if test x"${ccl64}" = xtrue ; then
+	echo "CCL64 enabled. Executable name: \"${CCL64_NAME}\""
+fi
+if test x"${ccl64_exec}" = xtrue ; then
+   echo "CCL64 executable image enabled for maxima."
 fi
 if test x"${ecl}" = xtrue ; then
 	echo "ECL enabled. Executable name: \"${ECL_NAME}\""

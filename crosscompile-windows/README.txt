@@ -5,17 +5,21 @@ On a Ubuntu/Debian System just install some tools for crosscompiling:
 
 apt-get install g++-mingw-w64-i686 cmake nsis wine automake texinfo rsync p7zip-full wget tcl-dev tk-dev texlive g++ libgl1-mesa-dev gettext
 
-Then you can start the crosscompiling-process:
+(If you are using a 64 bit operating system, it might be necessary to add
+the i386 architecture (https://wiki.debian.org/Multiarch/HOWTO) before).
+
+Then you can extract the Maxima sourcecode or clone the git repository
+and start the crosscompiling-process:
 
 
-cd build # change to the build directory
+cd crosscompile-windows/build # change to the build directory
 cmake ..
 make
 make package
 
 This will download the required Software (CLISP, Gnuplot, wxMaxima,
-wxWidgets, Tcl, Tk, jsMath TeX Fonts, SBCL, VTK) from the internet
-into the directory "download".
+wxWidgets, Tcl, Tk, jsMath TeX Fonts, SBCL, VTK) from the Internet
+into the directory "crosscompile-windows/download".
 
 The packages will be compiled (if necessary) and a Windows 
 installer for Maxima is generated.
@@ -31,12 +35,12 @@ cmake -DUSE_WXMAXIMA_GIT=YES ..
 
 If you want to exclude VTK, use
 cmake -DUSE_VTK=NO ..
-(Attention: The compilation time will increase with vtk!!! 
-The size of the installer will approximately be 50% larger than without VTK).
+(Attention: The size of the installer will approximately be 50% larger
+than without VTK).
 
 
-In case a software gets upgraded (and no new patches are needed), it
-should be sufficient to just increase the version number and MD5-checksum
+In case a new release of a software is released (and no new patches are needed),
+it should be sufficient to just increase the version number and MD5-checksum
 for the new release in CMakeLists.txt.
 
 

@@ -18,7 +18,9 @@
 ;;; This is a maxima-gnuplot interface.
 
 ;;; Visit
-;;; http://riotorto.users.sourceforge.net/gnuplot
+;;; http://tecnostats.net/Maxima/gnuplot
+;;; and 
+;;; http://tecnostats.net/Maxima/vtk
 ;;; for examples
 
 ;;; Some portions of this package were written by 
@@ -136,11 +138,11 @@
       (gethash '$zaxis_width *gr-options*) 1
       (gethash '$zaxis_type *gr-options*)  0    ; two options: 1 (solid) and 0 (dots)
       (gethash '$zaxis_color *gr-options*) "#000000"
-      (gethash '$xlabel *gr-options*)      "X"
+      (gethash '$xlabel *gr-options*)      ""
       (gethash '$xlabel_secondary *gr-options*) ""
-      (gethash '$ylabel *gr-options*)      "Y"
+      (gethash '$ylabel *gr-options*)      ""
       (gethash '$ylabel_secondary *gr-options*) ""
-      (gethash '$zlabel *gr-options*)      "Z"
+      (gethash '$zlabel *gr-options*)      ""
       (gethash '$zlabel_rotate *gr-options*) '$auto
 
       ; point options
@@ -308,8 +310,13 @@
   (some #'(lambda (z) (string= z str))
         (loop for k being the hash-keys of *color-table* collect k)))
 
+;; Hex colors can either read
+;;   #rrggbb or #rrggbbaa
+;; with rr, bb, gg and aa being two-digit hex numbers.
+;; Numbers containing a transparency aa only work if the gnuplot version
+;; that is being used supports it which should be any gnuplot >=5.0.
 (defun correct-color-hex (str)
-  (and (= (length str) 7)
+  (and ( or (= (length str) 7) (= (length str) 9))
        (char= (schar str 0) #\#)
        (every #'(lambda (z) (position z "0123456789abcdef"))
               (subseq str 1))))
@@ -328,8 +335,12 @@
       (/ (parse-integer hex2 :radix 16) 255.0)
       (/ (parse-integer hex3 :radix 16) 255.0))))
 
+;; Interprets a rgb string or a rgba string and converts the latter to argb
+;; as gnuplot needs this format
 (defun hex-to-rgb (str)
-  (format nil "rgb '~a'" str))
+  (if (= (length str) 7)
+    (format nil "rgb '~a'" str)
+    (format nil "rgb '#~a~a'" (subseq str 7 9) (subseq str 1 7))))
 
 (defun update-color (opt val)
   (let ((str (atom-to-downcased-string val)))
@@ -370,7 +381,7 @@
                  $epslatex $epslatex_standalone $svg $x11 $qt
                  $dumb $dumb_file $pdf $pdfcairo $wxt $animated_gif
                  $multipage_pdfcairo $multipage_pdf $multipage_eps 
-                 $multipage_eps_color $aquaterm $tiff $vrml $obj $stl $pnm)))
+                 $multipage_eps_color $aquaterm $tiff $vrml $obj $stl $pnm $ply)))
      (cond
        ((member val terms)
           (when (and (eq val '$png) $draw_use_pngcairo)

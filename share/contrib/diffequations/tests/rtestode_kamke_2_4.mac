@@ -110,21 +110,22 @@ exact;
 (pn_(313),ans:contrib_ode(eqn:x*(x^2+1)*'diff(y,x,2)+(2*(n+1)*x^2+2*n+1)*'diff(y,x,1)+(n-v)*(v+n+1)*x*y,y,x));
 false;
 
-/* Kamke 2. 314  */ 
+/* Kamke 2. 314  */
 (pn_(314),ans:contrib_ode(eqn:x*(x^2+1)*'diff(y,x,2)-(2*(n-1)*x^2+2*n-1)*'diff(y,x,1)+(-v+n-1)*(v+n)*x*y,y,x));
 false;
 
-/* Kamke 2. 315   CHECKME */ 
+/* Kamke 2. 315 */ 
 (pn_(315),ans:contrib_ode(eqn:x*(x^2-1)*'diff(y,x,2)+'diff(y,x,1)+a*x^3*y,y,x));
-[y=%k1*sin(sqrt(a)*log(2*sqrt(x^2-1)+2*x))+%k2*cos(sqrt(a)*log(2*sqrt(x^2-1)+2*x))];
-method;
-xformtoconstcoeff;
+[y = %k1*sin((sqrt(a)*(x^2-1))/(sqrt(x-1)*sqrt(x+1)))
+    +%k2*cos((sqrt(a)*(x^2-1))/(sqrt(x-1)*sqrt(x+1)))];
+[method,ode_check(eqn,ans[1])];
+[xformtoconstcoeff,0];
 
-/* Kamke 2. 316  */ 
+/* Kamke 2. 316  */
 (pn_(316),ans:contrib_ode(eqn:x*(x^2-1)*'diff(y,x,2)+(x^2-1)*'diff(y,x,1)-x*y,y,x));
 false;
 
-/* Kamke 2. 317  */ 
+/* Kamke 2. 317  */
 (pn_(317),ans:contrib_ode(eqn:x*(x^2-1)*'diff(y,x,2)+(3*x^2-1)*'diff(y,x,1)+x*y,y,x));
 false;
 
@@ -426,7 +427,7 @@ forget(b>0,b>a^2);
 [method,ode_check(eqn,ans[1])];
 [odelin,0];
 
-/* Kamke 2. 356  */ 
+/* Kamke 2. 356  */
 (pn_(356),ans:contrib_ode(eqn:'diff(y,x,2)=(-2*x^2-1)*'diff(y,x,1)/(x*(x^2+1))-(-v*(v+1)*x^2-n^2)*y/(x^2*(x^2+1)),y,x));
 false;
 
@@ -442,11 +443,11 @@ false;
 [method,ode_check(eqn,ans[1])];
 [odelin,0];
 
-/* Kamke 2. 359  */ 
+/* Kamke 2. 359  */
 (pn_(359),ans:contrib_ode(eqn:'diff(y,x,2)=-2*x*'diff(y,x,1)/(x^2-1)-v*(v+1)*y/(x^2*(x^2-1)),y,x));
 false;
 
-/* Kamke 2. 360  */ 
+/* Kamke 2. 360  */
 (pn_(360),ans:contrib_ode(eqn:'diff(y,x,2)=v*(v+1)*y/x^2-2*x*'diff(y,x,1)/(x^2-1),y,x));
 false;
 
@@ -460,7 +461,7 @@ done;
 (forget(a>0),done);
 done;
 
-/* Kamke 2. 362  */ 
+/* Kamke 2. 362  */
 (pn_(362),ans:contrib_ode(eqn:'diff(y,x,2)=2*x*'diff(y,x,1)/(x^2-1)-(2*a*x^2+(a-n)*(n+a+1)*x^2*(x^2-1)+n*(n+1)*(x^2-1))*y/(x^2*(x^2-1)),y,x));
 false;
 
@@ -489,7 +490,7 @@ ode_check(eqn,ans[1]);
 method;
 xformtoconstcoeff;
 
-/* Kamke 2. 367  */ 
+/* Kamke 2. 367  */
 (pn_(367),ans:contrib_ode(eqn:'diff(y,x,2)=-2*x*'diff(y,x,1)/(x^2+1)-(a^2*(x^2+1)^2-n*(n+1)*(x^2+1)+m^2)*y/(x^2+1)^2,y,x));
 [y = %k2*spherodialwave_b(-m,n^2+n-m^2+m-a^2,-a^2/4,-%i*x)/(x^2+1)^(m/2)
     +%k1*spherodialwave_a(-m,n^2+n-m^2+m-a^2,-a^2/4,-%i*x)/(x^2+1)^(m/2)];
@@ -527,7 +528,7 @@ ode_check(eqn,ans[1]);
 method;
 xformtoconstcoeff;
 
-/* Kamke 2. 371  */ 
+/* Kamke 2. 371  */
 (pn_(371),ans:contrib_ode(eqn:'diff(y,x,2)=-y*(-(x^2-1)*lambda-a^2)/(x^2-1)^2-2*x*'diff(y,x,1)/(x^2-1),y,x),0);
 0$
 /*
@@ -546,7 +547,7 @@ xformtoconstcoeff;
 (pn_(372),ans:contrib_ode(eqn:'diff(y,x,2)=-2*x*'diff(y,x,1)/(x^2-1)-((x^2-1)*(a*x^2+b*x+c)-k^2)*y/(x^2-1)^2,y,x));
 */
 
-/* Kamke 2. 373  */ 
+/* Kamke 2. 373  */
 (pn_(373),ans:contrib_ode(eqn:'diff(y,x,2)=-2*x*'diff(y,x,1)/(x^2-1)-(-a^2*(x^2-1)^2-n*(n+1)*(x^2-1)-m^2)*y/(x^2-1)^2,y,x));
 [y = %k2*spherodialwave_b(-m,n^2+n-m^2+m-a^2,-a^2/4,-x)
           /((x-1)^(m/2)*(x+1)^(m/2))
@@ -635,7 +636,21 @@ forget(a>0);
 
 /* Kamke 2. 381  */ 
 (pn_(381),ans:contrib_ode(eqn:'diff(y,x,2)=c-b*y/(x^2*(x-a)^2),y,x));
-false;
+[y = (c*x^((sqrt(a^2-4*b)+abs(a))/(2*abs(a)))
+              *'integrate(((x-a)^(sqrt(a^2-4*b)/abs(a))
+                           *'integrate(x^((sqrt(a^2-4*b)+abs(a))/(2*abs(a)))
+                                        /(x-a)
+                                         ^((sqrt(a^2-4*b)-abs(a))/(2*abs(a))),
+                                       x))
+                           /(x^(sqrt(a^2-4*b)/abs(a))*(x^2-a*x)),x))
+          /(x-a)^((sqrt(a^2-4*b)-abs(a))/(2*abs(a)))
+          +(%k2*abs(a)*x^(1/2-sqrt(a^2-4*b)/(2*abs(a)))
+               *(x-a)^(sqrt(a^2-4*b)/(2*abs(a))+1/2))
+           /(a*sqrt(a^2-4*b))
+          +%k1*x^(sqrt(a^2-4*b)/(2*abs(a))+1/2)
+              *(x-a)^(1/2-sqrt(a^2-4*b)/(2*abs(a)))];
+[method,ode_check(eqn,ans[1])];
+[kovacic,0];
 
 /* Kamke 2. 382  */ 
 /* CHECKME - Takes a long time
@@ -759,9 +774,11 @@ done;
 [method,ode_check(eqn,ans[1])];
 [odelin,0];
 
-/* Kamke 2. 398  */ 
+/* Kamke 2. 398  */
+/*
 (pn_(398),ans:contrib_ode(eqn:'diff(y,x,2)=-(3*x^2-1)*'diff(y,x,1)/(x*(x^2-1))-(x^2-(2*v+1)^2-1)*y/(x^2-1)^2,y,x));
 false;
+*/
 
 /* Kamke 2. 399  */ 
 (pn_(399),ans:contrib_ode(eqn:'diff(y,x,2)=(3*x+1)*'diff(y,x,1)/((x-1)*(x+1))-36*(x+1)^2*y/((x-1)^2*(3*x+5)^2),y,x));

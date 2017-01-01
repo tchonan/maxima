@@ -2806,8 +2806,8 @@
       ; save in plotcmd the gnuplot preamble
       (setf plotcmd
          (concatenate 'string
-            (if *multiplot-is-active*
-               ""
+            (unless (or *multiplot-is-active*
+                        (member (get-option '$terminal) '($eps $epslatex $epslatex_standalone)))
                (format nil "set obj 1 fc rgb '~a' fs solid 1.0 noborder ~%"
                        (get-option '$background_color)) )
             (if (equal (get-option '$proportional_axes) '$none)
@@ -3227,13 +3227,18 @@
        gfn (plot-temp-file (get-option '$gnuplot_file_name))
        dfn (plot-temp-file (get-option '$data_file_name)))
 
-    ; we now create two files: maxout.gnuplot and data.gnuplot
+    ;; we now create two files: maxout.gnuplot and data.gnuplot
     (setf cmdstorage
           (open gfn
                 :direction :output :if-exists :supersede))
+    (if (eql cmdstorage nil)
+      (merror "draw: Cannot create file '~a'. Probably maxima_tempdir doesn't point to a writable directory." gfn))
     (setf datastorage
           (open dfn
                 :direction :output :if-exists :supersede))
+    (if (eql datastorage nil)
+      (merror "draw: Cannot create file '~a'. Probably maxima_tempdir doesn't point to a writable directory." dfn))
+    
     (setf datapath (format nil "'~a'" dfn))
     ; when one multiplot window is active, change of terminal is not allowed
     (if (not *multiplot-is-active*)
@@ -3390,8 +3395,8 @@
                      (incf nilcounter)))
                 (format cmdstorage "~%set size ~a, ~a~%" size1 size2)
                 (format cmdstorage "set origin ~a, ~a~%" origin1 origin2)
-                (when (and (not *multiplot-is-active*)
-                           (not (member (get-option '$terminal) '($epslatex $epslatex_standalone))))
+                (unless (or *multiplot-is-active*
+                            (member (get-option '$terminal) '($epslatex $epslatex_standalone)))
                   (format cmdstorage "set obj 1 rectangle behind from screen ~a,~a to screen ~a,~a~%" 
                                      origin1 origin2 (+ origin1 size1 ) (+ origin2 size2)))  ))
         (setf is1stobj t

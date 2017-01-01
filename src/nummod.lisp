@@ -241,6 +241,25 @@
 
 (defprop $ceiling simp-ceiling operators)
 
+(defprop $floor simplim%floor simplim%function)
+
+(defun simplim%floor (expr var val)
+  (let* ((arg (cadr expr))
+	 (b (behavior arg var val))
+	 (arglimab (limit arg var val 'think)) ; with $zeroa $zerob
+	 (arglim (ridofab arglimab)))
+    (cond ((and (= b -1)
+		(maxima-integerp arglim))
+	   (m- arglim 1))
+	  ((and (= b 1)
+		(maxima-integerp arglim))
+	   arglim)
+	  ((and (mnump arglim)
+		(not (maxima-integerp arglim)))
+	   (simplify (list '($floor) arglim)))
+	  (t
+	   (throw 'limit nil)))))
+
 (defprop $ceiling tex-matchfix tex)
 (defprop $ceiling (("\\left \\lceil " ) " \\right \\rceil") texsym)
 
@@ -287,6 +306,26 @@
 	      (member ($compare e 0) '("<" "<=") :test #'equal))
 	 0)
 	(t `(($ceiling simp) ,e))))
+
+(defprop $ceiling simplim%ceiling simplim%function)
+
+(defun simplim%ceiling (expr var val)
+  (let* ((arg (cadr expr))
+	 (b (behavior arg var val))
+	 (arglimab (limit arg var val 'think)) ; with $zeroa $zerob
+	 (arglim (ridofab arglimab)))
+    (cond ((and (= b -1)
+		(maxima-integerp arglim))
+	   arglim)
+	  ((and (= b 1)
+		(maxima-integerp arglim))
+	   (m+ arglim 1))
+	  ((and (mnump arglim)
+		(not (maxima-integerp arglim)))
+	   (simplify (list '($ceiling) arglim)))
+	  (t
+	   (throw 'limit nil)))))
+
 
 (defprop $mod simp-nummod operators)
 (defprop $mod tex-infix tex)
@@ -344,6 +383,25 @@
 		 ((and (eq sgn '$zero) ($featurep ub '$even)) ub)
 		 ((apply-reflection-simp yy e t))
 		 (t `((,yy simp) ,e)))))))
+
+(defprop %round simplim%round simplim%function)
+
+(defun simplim%round (expr var val)
+  (let* ((arg (cadr expr))
+	 (b (behavior arg var val))
+	 (arglimab (limit arg var val 'think)) ; with $zeroa $zerob
+	 (arglim (ridofab arglimab)))
+    (cond ((and (= b -1)
+		(maxima-integerp (m+ 1//2 arglim)))
+	   (m- arglim 1//2))
+	  ((and (= b 1)
+		(maxima-integerp (m+ 1//2 arglim)))
+	   (m+ arglim 1//2))
+	  ((and (mnump arglim)
+		(not (maxima-integerp (m+ 1//2 arglim))))
+	   (simplify (list '(%round) arglim)))
+	  (t
+	   (throw 'limit nil)))))
  
 ;; Round a number towards zero.
 

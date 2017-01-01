@@ -215,13 +215,11 @@ is EQ to FNNAME if the latter is non-NIL."
 	     (vector-push fnname ar)
 	     (mbind finish2032 args fnname)
 	     (setq finish2033 t)
-	     (prog1
-		 (let ((aexprp (and aexprp (not (atom (caddr fn)))
-				    (eq (caar (caddr fn)) 'lambda))))
-		   (cond ((null (cddr fn)) (merror (intl:gettext "lambda: no body present.")))
-			 ((cdddr fn) (mevaln (cddr fn)))
-			 (t (meval (caddr fn)))))
-	       nil))
+	     (let ((aexprp (and aexprp (not (atom (caddr fn)))
+				(eq (caar (caddr fn)) 'lambda))))
+	       (cond ((null (cddr fn)) (merror (intl:gettext "lambda: no body present.")))
+		     ((cdddr fn) (mevaln (cddr fn)))
+		     (t (meval (caddr fn))))))
 	(if finish2033
 	    (progn
 	      (incf (fill-pointer *mlambda-call-stack*) -5)
@@ -323,7 +321,7 @@ is EQ to FNNAME if the latter is non-NIL."
          (setq u
                (or (safe-getl (caar form) '(noun))
                    (and *nounsflag*
-                        (and (symbolp (caar form)) (eq (getcharn (caar form) 1) #\%))
+                        (and (symbolp (caar form)) (eql (getcharn (caar form) 1) #\%))
                         (not (or (getl-lm-fcn-prop (caar form) '(subr))
                                  (safe-getl (caar form) '(mfexpr*))))
                         (prog2 ($verbify (caar form))

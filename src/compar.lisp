@@ -1380,8 +1380,10 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
     (sign1 (car x))
     (cond ((eq sign '$zero) (return t))
 	  ((and *complexsign* (eq sign '$complex))
-	   ;; Found a complex factor. Return immediately. The sign is $complex.
-	   (return t))
+	   ;; Found a complex factor.  We don't return immediately
+	   ;; because another factor could be zero.
+	   (setq s '$complex))
+	  ((and *complexsign* (eq s '$complex))) ; continue the loop
 	  ((and *complexsign* (eq sign '$imaginary))
 	   ;; Found an imaginary factor. Look if we have already one.
 	   (cond ((eq s '$imaginary)
@@ -1415,32 +1417,44 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
 
 (defun signdiff (x)
   (setq sign '$pnz)
-  (with-compsplt (lhs rhs x)
-    (if (and (mplusp lhs) (equal rhs 0)
-             (null (cdddr lhs))
-             (negp (cadr lhs)) (not (negp (caddr lhs))))
-        (setq rhs (neg (cadr lhs)) lhs (caddr lhs)))
-    (let (dum)
-      (cond ((or (equal rhs 0) (mplusp lhs)) nil)
-            ((and (member (constp rhs) '(numer symbol) :test #'eq)
-                  (numberp (setq dum (numer rhs)))
-                  (prog2 (setq rhs dum) nil)))
-            ((mplusp rhs) nil)
-            ((and (dcompare lhs rhs) (member sign '($pos $neg $zero) :test #'eq)))
-            ((and (not (atom lhs)) (not (atom rhs))
-                  (eq (caar lhs) (caar rhs))
-                  (kindp (caar lhs) '$increasing))
-             (sign (sub (cadr lhs) (cadr rhs)))
-             t)
-            ((and (not (atom lhs)) (not (atom rhs))
-                  (eq (caar lhs) (caar rhs))
-                  (kindp (caar lhs) '$decreasing))
-             (sign (sub (cadr rhs) (cadr lhs)))
-             t)
-            ((and (not (atom lhs)) (eq (caar lhs) 'mabs)
-                  (alike1 (cadr lhs) rhs))
-             (setq sign '$pz minus nil odds nil evens nil) t)
-            ((signdiff-special lhs rhs))))))
+  (let ((swapped nil) (retval))
+    (with-compsplt (lhs rhs x)
+      (if (and (mplusp lhs) (equal rhs 0) (null (cdddr lhs)))
+        (cond ((and (negp (cadr lhs)) (not (negp (caddr lhs))))
+                (setq rhs (neg (cadr lhs)) lhs (caddr lhs)))
+              ;; The following fixes SourceForge bug #3148
+              ;; where sign(a-b) returned pnz and sign(b-a) returned pos.
+			  ;; Previously, only the case (-a)+b was handled.
+			  ;; Now we also handle a+(-b) by swapping lhs and rhs,
+			  ;; setting a flag "swapped", running through the same code and
+			  ;; then flipping the answer.
+              ((and (negp (caddr lhs)) (not (negp (cadr lhs))))
+                (setq rhs (cadr lhs) lhs (neg (caddr lhs)) swapped t))))
+      (let (dum)
+        (setq retval
+          (cond ((or (equal rhs 0) (mplusp lhs)) nil)
+                ((and (member (constp rhs) '(numer symbol) :test #'eq)
+                      (numberp (setq dum (numer rhs)))
+                      (prog2 (setq rhs dum) nil)))
+                ((mplusp rhs) nil)
+                ((and (dcompare lhs rhs) (member sign '($pos $neg $zero) :test #'eq)))
+                ((and (not (atom lhs)) (not (atom rhs))
+                      (eq (caar lhs) (caar rhs))
+                      (kindp (caar lhs) '$increasing))
+                 (sign (sub (cadr lhs) (cadr rhs)))
+                 t)
+                ((and (not (atom lhs)) (not (atom rhs))
+                      (eq (caar lhs) (caar rhs))
+                      (kindp (caar lhs) '$decreasing))
+                 (sign (sub (cadr rhs) (cadr lhs)))
+                 t)
+                ((and (not (atom lhs)) (eq (caar lhs) 'mabs)
+                      (alike1 (cadr lhs) rhs))
+                 (setq sign '$pz minus nil odds nil evens nil) t)
+                ((signdiff-special lhs rhs))))))
+    (if swapped
+      (setq sign (flip sign)))
+    retval))
 
 (defun signdiff-special (xlhs xrhs)
   ;; xlhs may be a constant
@@ -1477,7 +1491,11 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
       (cond ((eq (sign* (add xrhs 1)) '$neg)	;; c > 1
 	     (setq sgn '$pos))
 	    ((eq (sign* (add xrhs -1)) '$pos)	;; c < -1
-	     (setq sgn '$neg))))
+	     (setq sgn '$neg))
+		((zerop1 (add xrhs 1))				;; c = 1
+	     (setq sgn '$pz))
+		((zerop1 (add xrhs -1))				;; c = -1
+		 (setq sgn '$nz))))
 	   
     (when (and $useminmax (or (minmaxp xlhs) (minmaxp xrhs)))
       (setq sgn (signdiff-minmax xlhs xrhs)))
@@ -2316,8 +2334,8 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
   (if (not (numberp y))
     (setq y (/ (cadr y) (caddr y))))
   (cond
-    ((> x y) '$pos)
-    ((> y x) '$neg)
+    (#-ecl (> x y) #+ecl (> (- x y) 0) '$pos)
+    (#-ecl (> y x) #+ecl (> (- y x) 0) '$neg)
     (t '$zero)))
 
 (defun mcons (x l)
@@ -2368,6 +2386,18 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
     (remove-if (lambda (sym) (mget sym '$numer))
                (cdr ($listofvars x)))))
 
+;; Rewrite a^b to a simpler expression that has the same sign:
+;; If b is odd or 1/b is odd, remove the exponent, e.g. x^3 becomes x.
+;; If b has a negative sign, return a^-b, e.g. 1/x^a becomes x^a.
+;; Otherwise, do nothing.
+(defun rewrite-mexpt-retaining-sign (x)
+  (if (mexptp x)
+    (let ((base (cadr x)) (exponent (caddr x)))
+      (cond ((or (eq (evod exponent) '$odd) (eq (evod (inv exponent)) '$odd)) base)
+	    ((negp exponent) (inv x))
+	    (t x)))
+    x))
+
 ;; COMPSPLT
 ;;
 ;; Split X into (values LHS RHS) so that X>0 <=> LHS > RHS. This is supposed to
@@ -2375,13 +2405,29 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
 ;; up in future.
 ;;
 ;; This uses two worker routines: COMPSPLT-SINGLE and COMPSPLT-GENERAL. The
-;; former assumes that X only contains one symbol value is not known (eg not %e,
+;; former assumes that X only contains one symbol whose value is not known (eg not %e,
 ;; %pi etc.). The latter tries to deal with arbitrary collections of variables.
 (defun compsplt (x)
-  (cond
-    ((or (atom x) (atom (car x))) (values x 0))
-    ((null (cdr (unknown-atoms x))) (compsplt-single x))
-    (t (compsplt-general x))))
+  (multiple-value-bind (lhs rhs) 
+    (cond
+      ((or (atom x) (atom (car x))) (values x 0))
+      ((null (cdr (unknown-atoms x))) (compsplt-single x))
+      (t (compsplt-general x)))
+	(let ((swapped nil))
+	  ;; If lhs is zero, swap lhs and rhs to make the following code simpler.
+	  ;; Remember that they were swapped to swap them back afterwards.
+      (when (equal lhs 0)
+        (setq lhs rhs rhs 0 swapped t))
+      (when (equal rhs 0)
+	    ;; Rewrite mexpts in factors so that e.g. x^3/y>0 becomes x*y>0. */
+	    (setq lhs
+		  (if (mtimesp lhs)
+		    (cons (car lhs) (mapcar #'rewrite-mexpt-retaining-sign (cdr lhs)))
+			(rewrite-mexpt-retaining-sign lhs))))
+	  ;; Undo swapping lhs and rhs.
+	  (if swapped
+	    (values rhs lhs)
+        (values lhs rhs)))))
 
 (defun compsplt-single (x)
   (do ((exp (list x 0)) (success nil))
@@ -2392,6 +2438,8 @@ TDNEG TDZERO TDPN) to store it, and also sets SIGN."
 	  (t (setq success t)))))
 
 (defun compsplt-general (x)
+  ;; Let compsplt-single work on it first to treat constant factors/terms.
+  (multiple-value-bind (lhs rhs) (compsplt-single x) (setq x (sub lhs rhs)))
   (cond
     ;; If x is an atom or a single level list then we won't change it any.
     ((or (atom x) (atom (car x)))

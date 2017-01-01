@@ -114,15 +114,29 @@
 ;;; Test for numerically evaluation in complex float precision
 
 (defun complex-float-numerical-eval-p (&rest args)
-  (let ((flag nil))
-    (dolist (ll args)
-      (destructuring-bind (rll . ill) (trisplit ll)
-        (unless (and (float-or-rational-p rll)
-                     (float-or-rational-p ill))
-          (return-from complex-float-numerical-eval-p nil))
-        (when (or (floatp rll) (floatp ill))
-          (setq flag t))))
-    (if (or $numer flag) t nil)))
+  "Determine if ARGS consists of numerical values by determining if
+  the real and imaginary parts of each arg are nuemrical (but not
+  bigfloats).  A non-NIL result is returned if at least one of args is
+  a floating-point value or if numer is true.  If the result is
+  non-NIL, it is a list of the arguments reduced via rectform"
+  (let (flag values)
+    (flet ((unrat (x)
+	     (if (ratnump x)
+		 (/ (second x) (third x))
+		 x)))
+      (dolist (ll args)
+	(destructuring-bind (rll . ill)
+	    (trisplit ll)
+	  (unless (and (float-or-rational-p rll)
+		       (float-or-rational-p ill))
+	    (return-from complex-float-numerical-eval-p nil))
+	  ;; Always save the result from trisplit.  But for backward
+	  ;; compatibility, only set the flag if any item is a float.
+	  (push (add rll (mul ill '$%i)) values)
+	  (setf flag (or flag (or (floatp rll) (floatp ill)))))))
+    (when (or $numer flag)
+      ;; Return the values in the same order as the args!
+      (nreverse values))))
 
 ;;; Test for numerically evaluation in bigfloat precision
 
@@ -131,19 +145,34 @@
     (dolist (ll args)
       (when (not (bigfloat-or-number-p ll)) 
         (return-from bigfloat-numerical-eval-p nil))
-      (when ($bfloatp ll) (setq flag t)))
+      (when ($bfloatp ll)
+	(setq flag t)))
     (if (or $numer flag) t nil)))
 
 ;;; Test for numerically evaluation in complex bigfloat precision
 
 (defun complex-bigfloat-numerical-eval-p (&rest args)
-  (let ((flag nil))
+  "Determine if ARGS consists of numerical values by determining if
+  the real and imaginary parts of each arg are nuemrical (including
+  bigfloats). A non-NIL result is returned if at least one of args is
+  a floating-point value or if numer is true. If the result is
+  non-NIL, it is a list of the arguments reduced via rectform."
+
+  (let (flag values)
     (dolist (ll args)
-      (when (not (complex-number-p ll 'bigfloat-or-number-p)) 
-        (return-from complex-bigfloat-numerical-eval-p nil))
-      (when (or ($bfloatp ($realpart ll)) ($bfloatp ($imagpart ll)))
-        (setq flag t)))
-    (if (or $numer flag) t nil)))
+      (destructuring-bind (rll . ill)
+	  (trisplit ll)
+        (unless (and (bigfloat-or-number-p rll)
+                     (bigfloat-or-number-p ill))
+          (return-from complex-bigfloat-numerical-eval-p nil))
+	;; Always save the result from trisplit.  But for backward
+	;; compatibility, only set the flag if any item is a bfloat.
+	(push (add rll (mul ill '$%i)) values)
+	(when (or ($bfloatp rll) ($bfloatp ill))
+          (setf flag t))))
+    (when (or $numer flag)
+      ;; Return the values in the same order as the args!
+      (nreverse values))))
 
 ;;; Test for numerical evaluation in any precision, real or complex.
 (defun numerical-eval-p (&rest args)
@@ -447,7 +476,6 @@
      (let ((sgn ($sign ($realpart a))))
        (cond ((zerop1 a) '$inf)
              ((member sgn '($neg $nz)) '$infinity)
-             ((eq sgn '($pos)) ($gamma a))
              ;; Call the simplifier of the function.
              (t (simplify (list '(%gamma_incomplete) a z))))))
     (t
@@ -783,6 +811,8 @@
 ;;; Maxima returns the numercial result for gamma_incomplete_regularized
 
 (defun gamma-incomplete (a x &optional (regularized nil))
+  (setq x (+ x (cond ((complexp x) #C(0.0 0.0)) ((realp x) 0.0))))
+
   (let ((factor
 	 ;; Compute the factor needed to scale the series or continued
 	 ;; fraction.  This is x^a*exp(-x) or x^a*exp(-x)/gamma(a)
@@ -1959,25 +1989,13 @@
 ;; bfloats, and complex-bfloat-erf is for complex bfloats.  Care is
 ;; taken to return real results for real arguments and imaginary
 ;; results for imaginary arguments
-;;
-;; Pure imaginary z with Im(z) < 0 causes trouble for Lisp implementations
-;; which recognize signed zero, so just avoid Im(z) < 0 altogether.
-
 (defun complex-erf (z)
-  (if (< (imagpart z) 0.0)
-    (conjugate (complex-erf-upper-half-plane (conjugate z)))
-    (complex-erf-upper-half-plane z)))
-
-(defun complex-erf-upper-half-plane (z)
   (let ((result
           (*
-	    (if (< (realpart z) 0.0) ;; only test needed in upper half plane
+	    (if (or (< (realpart z) 0.0) (and (= (realpart z) 0.0) (< (imagpart z) 0.0)))
 		-1
 	      1)
             (- 1.0 
-              ;; GAMMA-INCOMPLETE returns conjugate when z is pure imaginary
-              ;; with Im(z) < 0 and Lisp implementation recognizes signed zero.
-              ;; Good thing we are in the upper half plane.
               (* (/ (sqrt (float pi))) (gamma-incomplete 0.5 (* z z)))))))
     (cond
       ((= (imagpart z) 0.0)
@@ -2298,6 +2316,19 @@
       ;; Handle infinities at this place.
       ((eq z '$inf) 0)
       ((eq z '$minf) 2)
+      ((eq z '$infinity)	;; parallel to code in simplim%erf-%tanh
+       (destructuring-let (((rpart . ipart) (trisplit (cadr expr)))
+			   (ans ()) (rlim ()))
+			  (setq rlim (limit rpart var val 'think))
+			  (setq ans
+				(limit (m* rpart (m^t ipart -1)) var val 'think))
+			  (setq ans ($asksign (m+ `((mabs) ,ans) -1)))
+			  (cond ((or (eq ans '$pos) (eq ans '$zero))
+				 (cond ((eq rlim '$inf) 0)
+				       ((eq rlim '$minf) 2)
+				       (t '$und)))
+				(t '$und))))
+      ((eq z '$ind) '$ind)
       (t
        ;; All other cases are handled by the simplifier of the function.
        (simplify (list '(%erfc) z))))))
@@ -2781,7 +2812,7 @@
 (defun bf-inverse-erfc (z)
   (cond ((zerop z)
 	 (maxima::merror
-	  (intl:gettext "bf-inverse-erf: inverse_erf(~M) is undefined")
+	  (intl:gettext "bf-inverse-erfc: inverse_erfc(~M) is undefined")
 	  z))
 	((= z 1)
 	 (float 0 z))
